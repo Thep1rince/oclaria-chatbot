@@ -27,29 +27,45 @@ app.post("/chat", async (req, res) => {
   try {
     const incoming = Array.isArray(req.body?.messages) ? req.body.messages : [];
 
-    // ✅ Ignore any system messages sent by the browser
-    // ✅ Keep only the last 8 turns to stay fast
-    const trimmed = incoming.filter(m => m.role !== "system").slice(-8);
+    // keep it light: ignore any system msgs sent by browser, keep last 8 turns
+    const trimmed = incoming.filter(m => m && m.role !== "system").slice(-8);
 
-    const response = await client.chat.completions.create({
-      model: MODEL,
-      temperature: 0.5,
-      messages: [
-        {
-          role: "system",
-          content:
-            "You are Oclaria's assistant. Reply concisely in the visitor's language (FR, Darija, or EN). Prices: wall hooks 80 MAD, earbuds 222–320 MAD, can openers 40–150 MAD, figurines 25–30 MAD. Delivery: Casablanca 20 MAD, others 30–45 MAD.",
-        },
-        ...trimmed,
-      ],
-    });
+    // small helper: retry once on 429/5xx
+    async function askOnce() {
+      return await client.chat.completions.create({
+        model: MODEL,
+        temperature: 0.5,
+        messages: [
+          {
+            role: "system",
+            content:
+              "You are Oclaria's assistant. Reply concisely in FR/Darija/EN. Prices: wall hooks 80 MAD; earbuds 320 MAD; can openers 40–150 MAD; figurines 25–30 MAD. Delivery: Casablanca 20 MAD; others 35 MAD.",
+          },
+          ...trimmed,
+        ],
+      });
+    }
 
-    res.json({ reply: response.choices[0].message });
+    let resp;
+    try {
+      resp = await askOnce();
+    } catch (e1) {
+      const code = e1?.status || 0;
+      if (code === 429 || (code >= 500 && code < 600)) {
+        await new Promise(r => setTimeout(r, 900)); // brief backoff
+        resp = await askOnce();
+      } else {
+        throw e1;
+      }
+    }
+
+    res.json({ reply: resp.choices[0].message });
   } catch (err) {
-    console.error("❌ Error:", err.message);
-    res.status(500).json({ error: err.message });
+    console.error("❌ /chat error:", err.status || "", err.code || "", err.message);
+    res.status(500).json({ error: err.message || "server_error" });
   }
 });
+
 
 
 const PORT = process.env.PORT || 8787;
