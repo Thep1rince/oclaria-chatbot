@@ -25,17 +25,22 @@ const MODEL = "gpt-4.1-mini";
 
 app.post("/chat", async (req, res) => {
   try {
-    const { messages } = req.body;
+    const incoming = Array.isArray(req.body?.messages) ? req.body.messages : [];
+
+    // ✅ Ignore any system messages sent by the browser
+    // ✅ Keep only the last 8 turns to stay fast
+    const trimmed = incoming.filter(m => m.role !== "system").slice(-8);
 
     const response = await client.chat.completions.create({
       model: MODEL,
+      temperature: 0.5,
       messages: [
         {
           role: "system",
           content:
-            "You are Oclaria's assistant. Reply concisely in the visitor's language (FR, Darija, or EN). Prices: wall hooks 80 MAD, earbuds 222 MAD, can openers 40–150 MAD, figurines 25 MAD. Delivery Casablanca 20 MAD, others 30–45 MAD.",
+            "You are Oclaria's assistant. Reply concisely in the visitor's language (FR, Darija, or EN). Prices: wall hooks 80 MAD, earbuds 222–320 MAD, can openers 40–150 MAD, figurines 25–30 MAD. Delivery: Casablanca 20 MAD, others 30–45 MAD.",
         },
-        ...messages,
+        ...trimmed,
       ],
     });
 
@@ -45,6 +50,7 @@ app.post("/chat", async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 });
+
 
 const PORT = process.env.PORT || 8787;
 app.listen(PORT, () =>
