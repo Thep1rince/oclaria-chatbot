@@ -15,6 +15,9 @@ console.log(
 const app = express();
 app.use(cors());
 app.use(express.json());
+// quick health check
+app.get("/", (req, res) => res.send("Oclaria chatbot is running ✅"));
+
 
 // Initialize OpenAI client
 const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
