@@ -21,7 +21,7 @@ app.get("/", (req, res) => res.send("Oclaria chatbot is running ✅"));
 
 // Initialize OpenAI client
 const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
-const MODEL = "gpt-4.1-mini";
+const MODEL = "gpt-4o-mini";
 
 app.post("/chat", async (req, res) => {
   try {
