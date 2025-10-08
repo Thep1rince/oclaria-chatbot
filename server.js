@@ -31,20 +31,27 @@ app.post("/chat", async (req, res) => {
     const trimmed = incoming.filter(m => m && m.role !== "system").slice(-8);
 
     // small helper: retry once on 429/5xx
-    async function askOnce() {
-      return await client.chat.completions.create({
-        model: MODEL,
-        temperature: 0.5,
-        messages: [
-          {
-            role: "system",
-            content:
-              "You are Oclaria's assistant. Reply concisely in FR/Darija/EN. Prices: wall hooks 80 MAD; earbuds 320 MAD; can openers 40–150 MAD; figurines 25–30 MAD. Delivery: Casablanca 20 MAD; others 35 MAD.",
-          },
-          ...trimmed,
-        ],
-      });
-    }
+async function askOnce() {
+  const t0 = Date.now(); // start timer
+
+  const response = await client.chat.completions.create({
+    model: MODEL,
+    temperature: 0.5,
+    max_tokens: 220, // ✅ cap reply length so it finishes faster
+    messages: [
+      {
+        role: "system",
+        content:
+          "You are Oclaria's assistant. Reply concisely in FR/Darija/EN. Prices: wall hooks 80 MAD; earbuds 320 MAD; can openers 40–150 MAD; figurines 25–30 MAD. Delivery: Casablanca 20 MAD; others 35 MAD.",
+      },
+      ...trimmed.slice(-6), // ✅ keep only last 6 messages
+    ],
+  });
+
+  console.log("OpenAI latency:", Date.now() - t0, "ms"); // measure speed
+  return response;
+}
+
 
     let resp;
     try {
