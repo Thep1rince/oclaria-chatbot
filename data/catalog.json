@@ -1,0 +1,55 @@
+{
+  "products": {
+    "wall_hooks": {
+      "name": "Creative Thumb Wall Hooks",
+      "packs": [
+        { "size": 30, "price_mad": 80 },
+        { "size": 40, "price_mad": 110 },
+        { "size": 50, "price_mad": 135 },
+        { "size": 60, "price_mad": 150 }
+      ],
+      "free_delivery_threshold_mad": 120,
+      "link": "https://oclaria.com/creative-thumb-wall-hooks"
+    },
+    "can_openers": {
+      "name": "Stainless Can Openers",
+      "packs": [
+        { "size": 6, "price_mad": 40 },
+        { "size": 12, "price_mad": 70 },
+        { "size": 24, "price_mad": 135 },
+        { "size": 48, "price_mad": 250 }
+      ],
+      "free_delivery_threshold_mad": 150,
+      "link": "https://oclaria.com/can-opener"
+    },
+    "earbuds_i121": {
+      "name": "Kinglucky i121 Earbuds",
+      "price_mad": 320,
+      "free_delivery_everywhere": true,
+      "notes": "Bluetooth, water/sweat-resistant, elegant pendant case",
+      "link": "https://oclaria.com/m91-earbuds-detail"
+    },
+    "figurines_tom_jerry": {
+      "name": "Tom & Jerry Figurines",
+      "price_mad": 100,
+      "delivery_fees_apply": true,
+      "link": "https://oclaria.com/tom-jerry-spike"
+    },
+    "figurines_animals": {
+      "name": "Animal Figurines",
+      "price_mad": 30,
+      "delivery_fees_apply": true,
+      "link": "https://oclaria.com/animal-earrings"
+    }
+  },
+  "delivery": {
+    "casablanca_mad": 20,
+    "marrakech_mad": 0,
+    "other_cities_mad": 35
+  },
+  "catalog_page": "https://oclaria.com/products",
+  "ordering": {
+    "advise_visit_links": true,
+    "advise_whatsapp": true
+  }
+}

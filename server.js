@@ -1,3 +1,15 @@
+// ---- Load catalog (JSON single source of truth) ----
+import fs from "fs";
+
+let catalog = {};
+try {
+  catalog = JSON.parse(fs.readFileSync("./data/catalog.json", "utf8"));
+  console.log("Catalog loaded with products:", Object.keys(catalog.products || {}));
+} catch (e) {
+  console.error("Failed to load catalog.json:", e.message);
+  catalog = {};
+}
+
 // ---- server.js ----
 import "dotenv/config";          // load .env first
 import express from "express";
@@ -15,9 +27,9 @@ console.log(
 const app = express();
 app.use(cors());
 app.use(express.json());
+
 // quick health check
 app.get("/", (req, res) => res.send("Oclaria chatbot is running ✅"));
-
 
 // Initialize OpenAI client
 const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
@@ -27,32 +39,55 @@ app.post("/chat", async (req, res) => {
   try {
     const incoming = Array.isArray(req.body?.messages) ? req.body.messages : [];
 
-    // keep it light: ignore any system msgs sent by browser, keep last 8 turns
+    // Keep it light: drop any system msgs from browser, keep last 8 turns (we'll slice to 6 below)
     const trimmed = incoming.filter(m => m && m.role !== "system").slice(-8);
 
-    // small helper: retry once on 429/5xx
-async function askOnce() {
-  const t0 = Date.now(); // start timer
+    // Build the personality + data-driven system prompt
+    const systemPrompt = `
+You are "Oclaria Assistant" — a friendly, confident, conversational virtual salesperson for Oclaria (oclaria.com).
 
-  const response = await client.chat.completions.create({
-    model: MODEL,
-    temperature: 0.5,
-    max_tokens: 220, // ✅ cap reply length so it finishes faster
-    messages: [
-      {
-        role: "system",
-        content:
-          "You are Oclaria's assistant. Reply concisely in FR/Darija/EN. Prices: wall hooks 80 MAD; earbuds 320 MAD; can openers 40–150 MAD; figurines 25–30 MAD. Delivery: Casablanca 20 MAD; others 35 MAD.",
-      },
-      ...trimmed.slice(-6), // ✅ keep only last 6 messages
-    ],
-  });
+Language:
+- Always reply in the user's language: Moroccan Darija (Arabic script) / French / English.
 
-  console.log("OpenAI latency:", Date.now() - t0, "ms"); // measure speed
-  return response;
-}
+Tone:
+- Warm, helpful, slightly playful, but professional. Use light emojis (not too many).
 
+Sales goals:
+- Help customers discover, compare, and buy Oclaria products.
+- Answer concisely, then add a helpful next step:
+  • Link to the correct product page from the catalog.
+  • If they want to order, advise contacting us via WhatsApp politely.
 
+Source of truth (do NOT invent prices):
+${JSON.stringify(catalog, null, 2)}
+
+Rules:
+- Never invent or change prices; rely only on the catalog above.
+- Include the relevant product link when asked about an item.
+- Mention delivery fees: Casablanca 20 MAD, Marrakech free, other cities 35 MAD.
+- Free delivery thresholds: wall hooks ≥120 MAD, can openers ≥150 MAD, earbuds always free everywhere.
+- Also suggest: "See all products" at ${catalog.catalog_page || "https://oclaria.com/products"}.
+- If the user seems ready to buy, suggest ordering via WhatsApp in a friendly way.
+- Keep replies short and clear. If info is missing, say you'll check it 👀.
+`.trim();
+
+    // Helper: one call with timing
+    async function askOnce() {
+      const t0 = Date.now();
+      const response = await client.chat.completions.create({
+        model: MODEL,
+        temperature: 0.5,
+        max_tokens: 220,                // cap for speed
+        messages: [
+          { role: "system", content: systemPrompt },
+          ...trimmed.slice(-6)          // keep only last 6 messages
+        ],
+      });
+      console.log("OpenAI latency:", Date.now() - t0, "ms");
+      return response;
+    }
+
+    // Retry once on 429/5xx
     let resp;
     try {
       resp = await askOnce();
@@ -72,8 +107,6 @@ async function askOnce() {
     res.status(500).json({ error: err.message || "server_error" });
   }
 });
-
-
 
 const PORT = process.env.PORT || 8787;
 app.listen(PORT, () =>
